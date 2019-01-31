@@ -1,0 +1,216 @@
+---
+title: "Classification Models"
+author: "Shiva Teja Medichelmala"
+date: "November 5, 2018"
+output: html_document
+---
+
+install.packages("ISLR")
+library(ISLR)
+View(Weekly)
+summary(Weekly)
+cor(Weekly[,-9])
+plot(Weekly$Volume)
+pairs(Weekly)
+
+## From the above plotted graphs of each pair, it is significant that there is a correlation between Volume and Year. Apart of these no other variables display any kind of relationship
+
+## Logistic Regression
+
+log.pred=glm(Direction~Lag1+Lag2+Lag3+Lag4+Lag5+Volume,family = binomial,data = Weekly)
+summary(log.pred)
+
+## p-values of all predictors except Lag2 are statistically insignificant.  Higher p-values indicates that there is not enough evidence to reject Null hypothesis. With p-value of 2%, Lag2 displays some statistical significance.
+
+## Confusion matrix
+
+Weekly$prob=predict(log.pred,type="response")
+View(Weekly)
+
+Weekly$predDir="Down"
+Weekly$predDir[Weekly$prob>0.5]="Up"
+with(Weekly,
+     table(predDir,Direction))
+with(Weekly,
+     mean(Weekly$predDir==Direction))
+
+
+## The % of right perdictions is 56.1% without making a Type 1 or 2 errors. That means we were able to perdict the correct trend 56.1% times. Which indicates that our prediction is wrong 43.9 % times. 
+
+## Logistic Regression with Lag2
+
+Wtrain<-Weekly%>%
+  filter(Weekly$Year<2009)
+dim(Wtrain)
+
+Wtest<-Weekly%>%
+  filter(Weekly$Year>=2009)
+dim(Wtest)
+log.train=glm(Direction~Lag2, data=Wtrain,family=binomial)
+summary(log.train)
+
+Wtest$prob=predict(log.train,Wtest,type = "response")
+View(Wtest)
+
+Wtest$predDir="Down"
+Wtest$predDir[Wtest$prob>0.5]="Up"
+with(Wtest,
+     table(predDir,Direction))
+with(Wtest,
+     mean(Wtest$predDir==Direction))
+
+## Our prediction rate has increased from 56.1% to 62.5% by running the model with just Lag2. 
+
+##  Linear Discriminant Analysis
+install.packages("MASS")
+library(MASS)
+
+lda.pred=lda(Direction~Lag2,data=Wtrain)
+plot(lda.pred)
+
+ldatest=predict(lda.pred,Wtest)
+names(ldatest)
+ldatest$class[1:20]
+ldatest$posterior[1:20,1]
+table(ldatest$class,Wtest$Direction)
+mean(ldatest$class==Wtest$Direction)
+
+## Linear Discriminant Analysis also predicts 62.5% of the cases correctly, same as logistic regression
+
+##  Qudratic Discriminant Analysis
+
+qda.pred=qda(Direction~Lag2,data=Wtrain)
+plot(qda.pred)
+
+qdatest=predict(qda.pred,Wtest)
+names(qdatest)
+qdatest$class[1:20]
+qdatest$posterior[1:20,1]
+table(qdatest$class,Wtest$Direction)
+mean(qdatest$class==Wtest$Direction)
+
+## Quadratic Discriminant Analysis with Lag2 predicts less than LDA
+
+##  KNN
+
+install.packages("class")
+library(class)
+knntrain=as.matrix(Wtrain$Lag2)
+knntest=as.matrix(Wtest$Lag2)
+knnlabel=Wtrain[,9]
+
+knn.pred=knn(knntrain,knntest,knnlabel,k=1)
+table(knn.pred,Wtest$Direction)
+mean(knn.pred==Wtest$Direction)
+
+## KNN predicts 50.9% accurately
+
+## Out of all the models, Logistic regression and LDA provide best results
+
+## 
+
+knn.pred=knn(knntrain,knntest,knnlabel,k=100)
+table(knn.pred,Wtest$Direction)
+mean(knn.pred==Wtest$Direction)
+
+## 55.7%
+
+knn.pred=knn(knntrain,knntest,knnlabel,k=10)
+table(knn.pred,Wtest$Direction)
+mean(knn.pred==Wtest$Direction)
+
+## 57.69%
+
+## From the original model 10(b), the second best coefficient is of Lag1,  let's replace the above Lag2 logistic, lda, qda and knn with Lag1
+
+## Logistic Regression
+     
+log.train2=glm(Direction~Lag1, data=Wtrain,family=binomial)
+summary(log.train2)
+
+Wtest$prob2=predict(log.train2,Wtest,type = "response")
+View(Wtest)
+
+Wtest$predDir2="Down"
+Wtest$predDir2[Wtest$prob>0.5]="Up"
+with(Wtest,
+     table(predDir2,Direction))
+with(Wtest,
+     mean(Wtest$predDir2==Direction))
+
+## 56.7 % accuracy
+
+## LDA
+
+lda.pred2=lda(Direction~Lag1,data=Wtrain)
+plot(lda.pred2)
+
+ldatest2=predict(lda.pred2,Wtest)
+names(ldatest2)
+ldatest2$class[1:20]
+ldatest2$posterior[1:20,1]
+table(ldatest2$class,Wtest$Direction)
+mean(ldatest2$class==Wtest$Direction)
+
+## 56.7 % Accuracy
+
+## QDA
+
+qda.pred2=qda(Direction~Lag1,data=Wtrain)
+plot(qda.pred2)
+
+qdatest2=predict(qda.pred2,Wtest)
+names(qdatest2)
+qdatest2$class[1:20]
+qdatest2$posterior[1:20,1]
+table(qdatest2$class,Wtest$Direction)
+mean(qdatest2$class==Wtest$Direction)
+
+## 58.65% Accuracy
+
+## KNN
+
+knntrain2=as.matrix(Wtrain$Lag1)
+knntest2=as.matrix(Wtest$Lag1)
+knnlabel2=Wtrain[,9]
+
+knn.pred2=knn(knntrain2,knntest2,knnlabel2,k=1)
+table(knn.pred2,Wtest$Direction)
+mean(knn.pred2==Wtest$Direction)
+
+## 46.1% Accuracy
+
+## Let's try with an interaction variable of Lag1 and Lag2
+
+## Logistic Regression
+
+log.train3=glm(Direction~Lag2:Lag1, data=Wtrain,family=binomial)
+summary(log.train3)
+
+Wtest$prob3=predict(log.train3,Wtest,type = "response")
+View(Wtest)
+
+Wtest$predDir3="Down"
+Wtest$predDir3[Wtest$prob>0.5]="Up"
+with(Wtest,
+     table(predDir3,Direction))
+with(Wtest,
+     mean(Wtest$predDir3==Direction))
+
+## 56.7 % accuracy
+
+## LDA
+
+lda.pred3=lda(Direction~Lag2:Lag1,data=Wtrain)
+plot(lda.pred3)
+
+ldatest3=predict(lda.pred3,Wtest)
+names(ldatest3)
+ldatest3$class[1:20]
+ldatest3$posterior[1:20,1]
+table(ldatest3$class,Wtest$Direction)
+mean(ldatest3$class==Wtest$Direction)
+
+## 57.69 % Accuracy
+
+## Compared to all the models, Logistic regression and LDA of Lag2 gave the maximum accuracy.
